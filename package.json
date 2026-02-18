@@ -473,6 +473,9 @@
           "strip-ansi": "^7.2.0"
         }
       }
-    }
+    },
+    "ignoredBuiltDependencies": [
+      "core-js"
+    ]
   }
 }
