@@ -1,0 +1,9 @@
+# Keep local Chinese extension/custom docs unchanged during upstream sync.
+extensions/baidu-voice
+QUICK-START-VOICE-REMINDERS.md
+XIAOZHI-HTTP-PUSH-PROTOCOL.md
+XIAOZHI-INTEGRATION-DESIGN.md
+XIAOZHI-MCP-INTEGRATION.md
+voice-reminder-config-example.json5
+voice-reminder-examples.sh
+voice-reminder-optimization-guide.md
