@@ -2,6 +2,7 @@
   "name": "@openclaw/baidu-voice",
   "version": "1.0.0",
   "description": "Baidu Voice AI integration for OpenClaw - 24/7 AI assistant",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -21,5 +22,10 @@
   },
   "peerDependencies": {
     "openclaw": "workspace:*"
+  },
+  "openclaw": {
+    "extensions": [
+      "./src/index.ts"
+    ]
   }
 }

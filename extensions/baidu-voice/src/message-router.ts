@@ -3,10 +3,10 @@
  * 路由消息在语音设备、OpenClaw 频道和 MCP 服务器之间
  */
 
-import type { DeviceManager, VoiceCommandData, FunctionCallData } from "./device-manager";
-import type { BaiduVoiceGateway } from "./gateway";
-import type { BaiduVoiceConfig } from "./index";
-import { logger } from "./utils/logger";
+import type { DeviceManager, VoiceCommandData, FunctionCallData } from "./device-manager.js";
+import type { BaiduVoiceGateway } from "./gateway.js";
+import type { BaiduVoiceConfig } from "./index.js";
+import { logger } from "./utils/logger.js";
 
 export class MessageRouter {
   private config: BaiduVoiceConfig;
@@ -213,20 +213,20 @@ export class MessageRouter {
     if (text.includes("设备状态") || text.includes("device status")) {
       const status = await this.deviceManager.getStatus();
       const statusText = this.formatDeviceStatus(status);
-      await this.deviceManager.sendVoiceMessage(data.deviceId, statusText, true);
+      await this.deviceManager.sendTtsMessage(data.deviceId, statusText);
     }
 
     // 广播消息
     else if (text.startsWith("广播:") || text.startsWith("broadcast:")) {
       const message = text.replace(/^(广播:|broadcast:)/i, "").trim();
-      await this.deviceManager.broadcastVoiceMessage(message, true);
+      await this.deviceManager.broadcastTtsMessage(message);
     }
 
     // 查询对话历史
     else if (text.includes("对话历史") || text.includes("conversation history")) {
       const history = this.getHistory(data.deviceId, 5);
       const historyText = this.formatHistory(history);
-      await this.deviceManager.sendVoiceMessage(data.deviceId, historyText, true);
+      await this.deviceManager.sendTtsMessage(data.deviceId, historyText);
     }
   }
 
@@ -246,11 +246,11 @@ export class MessageRouter {
     }
 
     // 发送语音消息
-    else if (text.startsWith("/baidu-speak")) {
-      const match = text.match(/\/baidu-speak\s+(\S+)\s+(.+)/);
+    else if (text.startsWith("/baidu-tts") || text.startsWith("/baidu-speak")) {
+      const match = text.match(/\/baidu-(?:tts|speak)\s+(\S+)\s+(.+)/);
       if (match) {
         const [, deviceId, voiceText] = match;
-        await this.deviceManager.sendVoiceMessage(deviceId, voiceText, true);
+        await this.deviceManager.sendTtsMessage(deviceId, voiceText);
       }
     }
 

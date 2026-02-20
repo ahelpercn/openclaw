@@ -7,16 +7,16 @@
   // Voice Wake (唤醒词检测)
   voicewake: {
     triggers: ["openclaw", "嘿克劳", "小助手"],
-    enabled: true
+    enabled: true,
   },
 
   // Talk Mode (持续语音对话)
   talk: {
-    voiceId: "pMsXgVXv3BLzUgSXRplE",  // ElevenLabs 语音 ID
-    modelId: "eleven_multilingual_v2",  // 支持多语言
+    voiceId: "pMsXgVXv3BLzUgSXRplE", // ElevenLabs 语音 ID
+    modelId: "eleven_multilingual_v2", // 支持多语言
     apiKey: "your_elevenlabs_api_key",
-    interruptOnSpeech: true,  // 说话时打断播放
-    outputFormat: "pcm_44100"  // 低延迟流式播放
+    interruptOnSpeech: true, // 说话时打断播放
+    outputFormat: "pcm_44100", // 低延迟流式播放
   },
 
   // 音频转录 (自动检测语音消息)
@@ -24,7 +24,7 @@
     media: {
       audio: {
         enabled: true,
-        maxBytes: 20971520,  // 20MB
+        maxBytes: 20971520, // 20MB
         models: [
           // 优先使用 OpenAI (快速准确)
           { provider: "openai", model: "gpt-4o-mini-transcribe" },
@@ -33,11 +33,11 @@
             type: "cli",
             command: "whisper",
             args: ["--model", "base", "{{MediaPath}}"],
-            timeoutSeconds: 45
-          }
-        ]
-      }
-    }
+            timeoutSeconds: 45,
+          },
+        ],
+      },
+    },
   },
 
   // ========== 定时提醒配置 ==========
@@ -45,14 +45,14 @@
   cron: {
     enabled: true,
     store: "~/.openclaw/cron/jobs.json",
-    maxConcurrentRuns: 1
+    maxConcurrentRuns: 1,
   },
 
   // ========== Agent 配置 ==========
 
   agent: {
-    model: "anthropic/claude-opus-4-5",  // 主模型
-    thinking: "medium"  // 思考级别
+    model: "anthropic/claude-opus-4-5", // 主模型
+    thinking: "medium", // 思考级别
   },
 
   // ========== 消息渠道配置 ==========
@@ -60,13 +60,13 @@
   channels: {
     // WhatsApp 提醒投递
     whatsapp: {
-      allowFrom: ["+86138xxxxxxxx"]  // 你的手机号
+      allowFrom: ["+86138xxxxxxxx"], // 你的手机号
     },
 
     // Telegram 提醒投递
     telegram: {
       botToken: "your_telegram_bot_token",
-      allowFrom: ["your_telegram_user_id"]
-    }
-  }
+      allowFrom: ["your_telegram_user_id"],
+    },
+  },
 }

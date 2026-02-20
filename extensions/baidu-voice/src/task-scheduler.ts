@@ -4,10 +4,10 @@
  */
 
 import { CronJob } from "cron";
-import type { DeviceManager } from "./device-manager";
-import type { BaiduVoiceGateway } from "./gateway";
-import type { BaiduVoiceConfig } from "./index";
-import { logger } from "./utils/logger";
+import type { DeviceManager } from "./device-manager.js";
+import type { BaiduVoiceGateway } from "./gateway.js";
+import type { BaiduVoiceConfig } from "./index.js";
+import { logger } from "./utils/logger.js";
 
 export interface ScheduledTask {
   id: string;
@@ -244,9 +244,9 @@ export class TaskScheduler {
 
     // 发送到指定设备或广播
     if (task.deviceId) {
-      await this.deviceManager.sendVoiceMessage(task.deviceId, text, true);
+      await this.deviceManager.sendTtsMessage(task.deviceId, text);
     } else {
-      await this.deviceManager.broadcastVoiceMessage(text, true);
+      await this.deviceManager.broadcastTtsMessage(text);
     }
   }
 

@@ -4,34 +4,46 @@
  */
 
 import { EventEmitter } from "events";
-import type { PluginContext } from "openclaw/plugin-sdk";
 import WebSocket from "ws";
-import type { BaiduVoiceConfig } from "./index";
-import { logger } from "./utils/logger";
+import type { BaiduVoiceConfig } from "./index.js";
+import { logger } from "./utils/logger.js";
 
 export interface BaiduMessage {
   type: "asr" | "llm" | "event" | "function-call" | "custom";
   deviceId: string;
-  data: any;
+  data: unknown;
   timestamp: number;
+}
+
+type SessionTokenResponse = {
+  ai_agent_instance_id: string | number;
+  context?: {
+    token?: string;
+  };
+};
+
+type FunctionCallEnvelope = {
+  session_id?: string;
+  content?: string;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 export class BaiduVoiceGateway extends EventEmitter {
   private config: BaiduVoiceConfig;
-  private context: PluginContext;
   private connections: Map<string, WebSocket> = new Map();
   private sessionTokens: Map<string, { instanceId: string; token: string }> = new Map();
 
-  constructor(config: BaiduVoiceConfig, context: PluginContext) {
+  constructor(config: BaiduVoiceConfig) {
     super();
     this.config = config;
-    this.context = context;
   }
 
   async start(): Promise<void> {
-    logger.info("🌐 Starting Baidu Voice Gateway...");
+    logger.info("Starting Baidu Voice Gateway...");
 
-    // 为每个设备建立连接
     for (const device of this.config.devices) {
       if (device.autoConnect) {
         await this.connectDevice(device.deviceId);
@@ -40,7 +52,7 @@ export class BaiduVoiceGateway extends EventEmitter {
   }
 
   async stop(): Promise<void> {
-    logger.info("🛑 Stopping Baidu Voice Gateway...");
+    logger.info("Stopping Baidu Voice Gateway...");
 
     for (const [deviceId, ws] of this.connections) {
       ws.close();
@@ -50,35 +62,39 @@ export class BaiduVoiceGateway extends EventEmitter {
 
   async connectDevice(deviceId: string): Promise<void> {
     try {
-      logger.info(`🔌 Connecting device: ${deviceId}`);
+      logger.info(`Connecting device: ${deviceId}`);
 
-      // 获取会话 Token (连接方式一)
       const { instanceId, token } = await this.fetchSessionToken(deviceId);
       this.sessionTokens.set(deviceId, { instanceId, token });
 
-      // 构建 WebSocket URL
       const url = this.buildWebSocketUrl(instanceId, token);
-
-      // 创建 WebSocket 连接
       const ws = new WebSocket(url);
 
       ws.on("open", () => {
-        logger.info(`✅ Device connected: ${deviceId}`);
+        logger.info(`Device connected: ${deviceId}`);
         this.emit("device-connected", deviceId);
       });
 
-      ws.on("message", (data: Buffer) => {
-        this.handleMessage(deviceId, data);
+      ws.on("message", (data: WebSocket.RawData) => {
+        const buffer = Buffer.isBuffer(data)
+          ? data
+          : Array.isArray(data)
+            ? Buffer.concat(data)
+            : typeof data === "string"
+              ? Buffer.from(data)
+              : Buffer.from(data);
+        this.handleMessage(deviceId, buffer);
       });
 
       ws.on("close", () => {
-        logger.warn(`❌ Device disconnected: ${deviceId}`);
+        logger.warn(`Device disconnected: ${deviceId}`);
         this.connections.delete(deviceId);
         this.emit("device-disconnected", deviceId);
 
-        // 自动重连
         if (this.config.features.autoReconnect) {
-          setTimeout(() => this.connectDevice(deviceId), 5000);
+          setTimeout(() => {
+            void this.connectDevice(deviceId);
+          }, 5000);
         }
       });
 
@@ -97,8 +113,6 @@ export class BaiduVoiceGateway extends EventEmitter {
   private async fetchSessionToken(
     deviceId: string,
   ): Promise<{ instanceId: string; token: string }> {
-    // 调用百度 API 获取会话 Token
-    // 这里需要根据实际的 OTA 服务器接口实现
     const response = await fetch(`${this.config.openclaw.gatewayUrl}/api/baidu/session`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -112,10 +126,20 @@ export class BaiduVoiceGateway extends EventEmitter {
       throw new Error(`Failed to fetch session token: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const raw = (await response.json()) as unknown;
+    if (!isRecord(raw)) {
+      throw new Error("Invalid session token response");
+    }
+
+    const data = raw as SessionTokenResponse;
+    const token = data.context?.token;
+    if (!token) {
+      throw new Error("Missing session token in response");
+    }
+
     return {
-      instanceId: data.ai_agent_instance_id.toString(),
-      token: data.context.token,
+      instanceId: String(data.ai_agent_instance_id),
+      token,
     };
   }
 
@@ -125,74 +149,75 @@ export class BaiduVoiceGateway extends EventEmitter {
   }
 
   private handleMessage(deviceId: string, data: Buffer): void {
-    const isBinary = data[0] !== 0x5b; // 不是 '[' 字符
+    const isBinary = data[0] !== 0x5b;
 
     if (isBinary) {
-      // 音频数据
       this.emit("audio-data", { deviceId, data });
-    } else {
-      // 文本消息
-      const text = data.toString("utf-8");
-      this.parseTextMessage(deviceId, text);
+      return;
     }
+
+    const text = data.toString("utf-8");
+    this.parseTextMessage(deviceId, text);
   }
 
   private parseTextMessage(deviceId: string, text: string): void {
-    // ASR 结果
     if (text.startsWith("[Q]:")) {
       const asrText = text.substring(4);
-      this.emit("asr-result", {
-        deviceId,
-        text: asrText,
-        final: true,
-      });
-    } else if (text.startsWith("[Q]:[M]:")) {
+      this.emit("asr-result", { deviceId, text: asrText, final: true });
+      return;
+    }
+
+    if (text.startsWith("[Q]:[M]:")) {
       const asrText = text.substring(8);
-      this.emit("asr-result", {
-        deviceId,
-        text: asrText,
-        final: false,
-      });
+      this.emit("asr-result", { deviceId, text: asrText, final: false });
+      return;
     }
-    // LLM 结果
-    else if (text.startsWith("[A]:")) {
+
+    if (text.startsWith("[A]:")) {
       const llmText = text.substring(4);
-      this.emit("llm-result", {
-        deviceId,
-        text: llmText,
-        final: true,
-      });
-    } else if (text.startsWith("[A]:[M]:")) {
-      const llmText = text.substring(8);
-      this.emit("llm-result", {
-        deviceId,
-        text: llmText,
-        final: false,
-      });
+      this.emit("llm-result", { deviceId, text: llmText, final: true });
+      return;
     }
-    // Function Call
-    else if (text.startsWith("[F]:")) {
+
+    if (text.startsWith("[A]:[M]:")) {
+      const llmText = text.substring(8);
+      this.emit("llm-result", { deviceId, text: llmText, final: false });
+      return;
+    }
+
+    if (text.startsWith("[F]:")) {
       const jsonStr = text.substring(4);
       try {
-        const data = JSON.parse(jsonStr);
+        const parsed = JSON.parse(jsonStr) as unknown;
+        if (!isRecord(parsed)) {
+          throw new Error("function-call envelope is not an object");
+        }
+        const data = parsed as FunctionCallEnvelope;
+        const contentRaw = data.content;
+        if (typeof contentRaw !== "string") {
+          throw new Error("function-call content is not a string");
+        }
+        const content = JSON.parse(contentRaw) as unknown;
         this.emit("function-call", {
           deviceId,
-          sessionId: data.session_id,
-          content: JSON.parse(data.content),
+          sessionId: typeof data.session_id === "string" ? data.session_id : "",
+          content,
         });
       } catch (error) {
         logger.error("Failed to parse function call:", error);
       }
+      return;
     }
-    // 事件
-    else if (text.startsWith("[E]:")) {
+
+    if (text.startsWith("[E]:")) {
       this.handleEvent(deviceId, text);
+      return;
     }
-    // 自定义数据
-    else if (text.startsWith("[C]:")) {
+
+    if (text.startsWith("[C]:")) {
       const jsonStr = text.substring(4);
       try {
-        const data = JSON.parse(jsonStr);
+        const data = JSON.parse(jsonStr) as unknown;
         this.emit("custom-data", { deviceId, data });
       } catch (error) {
         logger.error("Failed to parse custom data:", error);
@@ -214,7 +239,6 @@ export class BaiduVoiceGateway extends EventEmitter {
     }
   }
 
-  // 发送文本到 AI
   async sendTextToAI(deviceId: string, text: string): Promise<void> {
     const ws = this.connections.get(deviceId);
     if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -222,10 +246,9 @@ export class BaiduVoiceGateway extends EventEmitter {
     }
 
     ws.send(`[T]:${text}`);
-    logger.debug(`📤 Sent to AI (${deviceId}): ${text}`);
+    logger.debug(`Sent to AI (${deviceId}): ${text}`);
   }
 
-  // 发送 TTS 播报
   async sendTextToTTS(deviceId: string, text: string): Promise<void> {
     const ws = this.connections.get(deviceId);
     if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -233,10 +256,9 @@ export class BaiduVoiceGateway extends EventEmitter {
     }
 
     ws.send(`[TTS]:${text}`);
-    logger.debug(`📤 Sent to TTS (${deviceId}): ${text}`);
+    logger.debug(`Sent to TTS (${deviceId}): ${text}`);
   }
 
-  // 发送 Function Call 结果
   async sendFunctionCallResult(
     deviceId: string,
     sessionId: string,
@@ -250,10 +272,9 @@ export class BaiduVoiceGateway extends EventEmitter {
 
     const payload = JSON.stringify({ session_id: sessionId, result, message });
     ws.send(`[F]:${payload}`);
-    logger.debug(`📤 Sent function result (${deviceId}): ${result}`);
+    logger.debug(`Sent function result (${deviceId}): ${result}`);
   }
 
-  // 发送打断命令
   async sendInterrupt(deviceId: string): Promise<void> {
     const ws = this.connections.get(deviceId);
     if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -261,10 +282,9 @@ export class BaiduVoiceGateway extends EventEmitter {
     }
 
     ws.send("[B]:");
-    logger.debug(`📤 Sent interrupt (${deviceId})`);
+    logger.debug(`Sent interrupt (${deviceId})`);
   }
 
-  // 检查设备连接状态
   isDeviceConnected(deviceId: string): boolean {
     const ws = this.connections.get(deviceId);
     return ws !== undefined && ws.readyState === WebSocket.OPEN;

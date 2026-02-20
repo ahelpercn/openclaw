@@ -4,9 +4,9 @@
  */
 
 import { EventEmitter } from "events";
-import type { BaiduVoiceGateway } from "./gateway";
-import type { BaiduVoiceConfig } from "./index";
-import { logger } from "./utils/logger";
+import type { BaiduVoiceGateway } from "./gateway.js";
+import type { BaiduVoiceConfig } from "./index.js";
+import { logger } from "./utils/logger.js";
 
 export interface Device {
   deviceId: string;
@@ -205,8 +205,8 @@ export class DeviceManager extends EventEmitter {
     }
   }
 
-  // 发送语音消息到设备
-  async sendVoiceMessage(deviceId: string, text: string, useTTS = true): Promise<void> {
+  // 发送独立 TTS 消息到设备（百度 WS [TTS] 协议）
+  async sendTtsMessage(deviceId: string, text: string): Promise<void> {
     const device = this.devices.get(deviceId);
     if (!device) {
       throw new Error(`Device not found: ${deviceId}`);
@@ -216,15 +216,24 @@ export class DeviceManager extends EventEmitter {
       throw new Error(`Device offline: ${device.name}`);
     }
 
-    if (useTTS) {
-      // 直接 TTS 播报（不经过 LLM）
-      await this.gateway.sendTextToTTS(deviceId, text);
-    } else {
-      // 发送给 AI 处理
-      await this.gateway.sendTextToAI(deviceId, text);
+    await this.gateway.sendTextToTTS(deviceId, text);
+
+    logger.info(`📤 Sent TTS message to ${device.name}: ${text}`);
+  }
+
+  // 发送对话消息到设备（由设备侧 AI 处理）
+  async sendAiMessage(deviceId: string, text: string): Promise<void> {
+    const device = this.devices.get(deviceId);
+    if (!device) {
+      throw new Error(`Device not found: ${deviceId}`);
     }
 
-    logger.info(`📤 Sent voice message to ${device.name}: ${text}`);
+    if (!device.online) {
+      throw new Error(`Device offline: ${device.name}`);
+    }
+
+    await this.gateway.sendTextToAI(deviceId, text);
+    logger.info(`📤 Sent AI message to ${device.name}: ${text}`);
   }
 
   // 发送 Function Call 结果
@@ -305,14 +314,14 @@ export class DeviceManager extends EventEmitter {
     return undefined;
   }
 
-  // 广播消息到所有在线设备
-  async broadcastVoiceMessage(text: string, useTTS = true): Promise<void> {
+  // 广播 TTS 消息到所有在线设备
+  async broadcastTtsMessage(text: string): Promise<void> {
     const onlineDevices = Array.from(this.devices.values()).filter((d) => d.online);
 
     logger.info(`📢 Broadcasting to ${onlineDevices.length} devices: ${text}`);
 
     const promises = onlineDevices.map((device) =>
-      this.sendVoiceMessage(device.deviceId, text, useTTS).catch((error) => {
+      this.sendTtsMessage(device.deviceId, text).catch((error) => {
         logger.error(`Failed to broadcast to ${device.name}:`, error);
       }),
     );
