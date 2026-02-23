@@ -1,4 +1,5 @@
 import { html, nothing } from "lit";
+import { t } from "../../i18n/index.ts";
 import type { AgentIdentityResult, AgentsFilesListResult, AgentsListResult } from "../types.ts";
 import {
   agentAvatarHue,
@@ -76,9 +77,9 @@ export function renderAgentOverview(params: {
   const skillFilter = Array.isArray(config.entry?.skills) ? config.entry?.skills : null;
   const skillCount = skillFilter?.length ?? null;
   const identityStatus = agentIdentityLoading
-    ? "Loading…"
+    ? t("agents.overview.loading")
     : agentIdentityError
-      ? "Unavailable"
+      ? t("agents.overview.unavailable")
       : "";
   const isDefault = Boolean(params.defaultId && agent.id === params.defaultId);
   const badge = agentBadgeText(agent.id, params.defaultId);
@@ -106,8 +107,8 @@ export function renderAgentOverview(params: {
 
   return html`
     <section class="card">
-      <div class="card-title">Overview</div>
-      <div class="card-sub">Workspace paths and identity metadata.</div>
+      <div class="card-title">${t("agents.overview.title")}</div>
+      <div class="card-sub">${t("agents.overview.subtitle")}</div>
 
       <div class="agent-identity-card" style="margin-top: 16px;">
         <div class="agent-avatar" style="--agent-hue: ${hue}">
@@ -126,39 +127,39 @@ export function renderAgentOverview(params: {
 
       <div class="agents-overview-grid" style="margin-top: 16px;">
         <div class="agent-kv">
-          <div class="label">Workspace</div>
+          <div class="label">${t("agents.overview.workspace")}</div>
           <div>
             <button
               type="button"
               class="workspace-link mono"
               @click=${() => onSelectPanel("files")}
-              title="Open Files tab"
+              title=${t("agents.overview.openFilesTab")}
             >${workspace}</button>
           </div>
         </div>
         <div class="agent-kv">
-          <div class="label">Primary Model</div>
+          <div class="label">${t("agents.overview.primaryModel")}</div>
           <div class="mono">${model}</div>
         </div>
         <div class="agent-kv">
-          <div class="label">Skills Filter</div>
-          <div>${skillFilter ? `${skillCount} selected` : "all skills"}</div>
+          <div class="label">${t("agents.overview.skillsFilter")}</div>
+          <div>${skillFilter ? t("agents.overview.skillsSelected", { count: String(skillCount) }) : t("agents.overview.allSkills")}</div>
         </div>
       </div>
 
       ${
         configDirty
           ? html`
-              <div class="callout warn" style="margin-top: 16px">You have unsaved config changes.</div>
+              <div class="callout warn" style="margin-top: 16px">${t("agents.overview.unsavedChanges")}</div>
             `
           : nothing
       }
 
       <div class="agent-model-select" style="margin-top: 20px;">
-        <div class="label">Model Selection</div>
+        <div class="label">${t("agents.overview.modelSelection")}</div>
         <div class="row" style="gap: 12px; flex-wrap: wrap;">
           <label class="field" style="min-width: 260px; flex: 1;">
-            <span>Primary model${isDefault ? " (default)" : ""}</span>
+            <span>${isDefault ? t("agents.overview.primaryModelDefault") : t("agents.overview.primaryModelLabel")}</span>
             <select
               .value=${effectivePrimary ?? ""}
               ?disabled=${disabled}
@@ -170,7 +171,7 @@ export function renderAgentOverview(params: {
                   ? nothing
                   : html`
                       <option value="">
-                        ${defaultPrimary ? `Inherit default (${defaultPrimary})` : "Inherit default"}
+                        ${defaultPrimary ? `${t("agents.overview.inheritDefault")} (${defaultPrimary})` : t("agents.overview.inheritDefault")}
                       </option>
                     `
               }
@@ -178,7 +179,7 @@ export function renderAgentOverview(params: {
             </select>
           </label>
           <div class="field" style="min-width: 260px; flex: 1;">
-            <span>Fallbacks</span>
+            <span>${t("agents.overview.fallbacks")}</span>
             <div class="agent-chip-input" @click=${(e: Event) => {
               const container = e.currentTarget as HTMLElement;
               const input = container.querySelector("input");
@@ -201,7 +202,7 @@ export function renderAgentOverview(params: {
               )}
               <input
                 ?disabled=${disabled}
-                placeholder=${fallbackChips.length === 0 ? "provider/model" : ""}
+                placeholder=${fallbackChips.length === 0 ? t("agents.overview.fallbackPlaceholder") : ""}
                 @keydown=${handleChipKeydown}
                 @blur=${(e: Event) => {
                   const input = e.target as HTMLInputElement;
@@ -217,14 +218,14 @@ export function renderAgentOverview(params: {
         </div>
         <div class="row" style="justify-content: flex-end; gap: 8px;">
           <button class="btn btn--sm" ?disabled=${configLoading} @click=${onConfigReload}>
-            Reload Config
+            ${t("common2.reloadConfig")}
           </button>
           <button
             class="btn btn--sm primary"
             ?disabled=${configSaving || !configDirty}
             @click=${onConfigSave}
           >
-            ${configSaving ? "Saving…" : "Save"}
+            ${configSaving ? t("common2.saving") : t("common2.save")}
           </button>
         </div>
       </div>

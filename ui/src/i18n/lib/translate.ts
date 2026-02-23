@@ -1,4 +1,5 @@
 import { en } from "../locales/en.ts";
+import { zh_CN } from "../locales/zh-CN.ts";
 import type { Locale, TranslationMap } from "./types.ts";
 
 type Subscriber = (locale: Locale) => void;
@@ -11,7 +12,10 @@ export function isSupportedLocale(value: string | null | undefined): value is Lo
 
 class I18nManager {
   private locale: Locale = "en";
-  private translations: Record<Locale, TranslationMap> = { en } as Record<Locale, TranslationMap>;
+  private translations: Record<Locale, TranslationMap> = { en, "zh-CN": zh_CN } as Record<
+    Locale,
+    TranslationMap
+  >;
   private subscribers: Set<Subscriber> = new Set();
 
   constructor() {
@@ -29,7 +33,7 @@ class I18nManager {
       } else if (navLang.startsWith("pt")) {
         this.locale = "pt-BR";
       } else {
-        this.locale = "en";
+        this.locale = "zh-CN";
       }
     }
   }
