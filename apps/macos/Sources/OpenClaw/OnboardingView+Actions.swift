@@ -1,7 +1,7 @@
 import AppKit
+import ClawdbotDiscovery
+import ClawdbotIPC
 import Foundation
-import OpenClawDiscovery
-import OpenClawIPC
 import SwiftUI
 
 extension OnboardingView {
@@ -26,17 +26,18 @@ extension OnboardingView {
         GatewayDiscoveryPreferences.setPreferredStableID(gateway.stableID)
 
         if self.state.remoteTransport == .direct {
-            self.state.remoteUrl = GatewayDiscoveryHelpers.directUrl(for: gateway) ?? ""
-        } else {
-            self.state.remoteTarget = GatewayDiscoveryHelpers.sshTarget(for: gateway) ?? ""
+            if let url = GatewayDiscoveryHelpers.directUrl(for: gateway) {
+                self.state.remoteUrl = url
+            }
+        } else if let host = GatewayDiscoveryHelpers.sanitizedTailnetHost(gateway.tailnetDns) ?? gateway.lanHost {
+            let user = NSUserName()
+            self.state.remoteTarget = GatewayDiscoveryModel.buildSSHTarget(
+                user: user,
+                host: host,
+                port: gateway.sshPort)
+            ClawdbotConfigFile.setRemoteGatewayUrl(host: host, port: gateway.gatewayPort)
         }
-        if let endpoint = GatewayDiscoveryHelpers.serviceEndpoint(for: gateway) {
-            OpenClawConfigFile.setRemoteGatewayUrl(
-                host: endpoint.host,
-                port: endpoint.port)
-        } else {
-            OpenClawConfigFile.clearRemoteGatewayUrl()
-        }
+        self.state.remoteCliPath = gateway.cliPath ?? ""
 
         self.state.connectionMode = .remote
         MacNodeModeCoordinator.shared.setPreferredGatewayStableID(gateway.stableID)
@@ -46,7 +47,7 @@ extension OnboardingView {
         SettingsTabRouter.request(tab)
         self.openSettings()
         DispatchQueue.main.async {
-            NotificationCenter.default.post(name: .openclawSelectSettingsTab, object: tab)
+            NotificationCenter.default.post(name: .clawdbotSelectSettingsTab, object: tab)
         }
     }
 
@@ -66,7 +67,7 @@ extension OnboardingView {
     }
 
     func finish() {
-        UserDefaults.standard.set(true, forKey: "openclaw.onboardingSeen")
+        UserDefaults.standard.set(true, forKey: "clawdbot.onboardingSeen")
         UserDefaults.standard.set(currentOnboardingVersion, forKey: onboardingVersionKey)
         OnboardingController.shared.close()
     }
@@ -112,9 +113,9 @@ extension OnboardingView {
                 code: parsed.code,
                 state: parsed.state,
                 verifier: pkce.verifier)
-            try OpenClawOAuthStore.saveAnthropicOAuth(creds)
+            try ClawdbotOAuthStore.saveAnthropicOAuth(creds)
             self.refreshAnthropicOAuthStatus()
-            self.anthropicAuthStatus = "Connected. OpenClaw can now use Claude."
+            self.anthropicAuthStatus = "Connected. Clawdbot can now use Claude."
         } catch {
             self.anthropicAuthStatus = "OAuth failed: \(error.localizedDescription)"
         }

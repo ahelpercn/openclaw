@@ -3052,6 +3052,21 @@ Direct transport example (macOS app):
 }
 ```
 
+Direct transport example (macOS app):
+
+```json5
+{
+  gateway: {
+    mode: "remote",
+    remote: {
+      transport: "direct",
+      url: "wss://gateway.example.ts.net",
+      token: "your-token",
+    },
+  },
+}
+```
+
 ### `gateway.reload` (Config hot reload)
 
 The Gateway watches `~/.clawdbot/clawdbot.json` (or `CLAWDBOT_CONFIG_PATH`) and applies changes automatically.

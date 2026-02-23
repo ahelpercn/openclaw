@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import OpenClaw
+@testable import Clawdbot
 
 @Suite struct GatewayEndpointStoreTests {
     private func makeDefaults() -> UserDefaults {
@@ -13,7 +13,7 @@ import Testing
     @Test func resolveGatewayTokenPrefersEnvAndFallsBackToLaunchd() {
         let snapshot = LaunchAgentPlistSnapshot(
             programArguments: [],
-            environment: ["OPENCLAW_GATEWAY_TOKEN": "launchd-token"],
+            environment: ["CLAWDBOT_GATEWAY_TOKEN": "launchd-token"],
             stdoutPath: nil,
             stderrPath: nil,
             port: nil,
@@ -24,7 +24,7 @@ import Testing
         let envToken = GatewayEndpointStore._testResolveGatewayToken(
             isRemote: false,
             root: [:],
-            env: ["OPENCLAW_GATEWAY_TOKEN": "env-token"],
+            env: ["CLAWDBOT_GATEWAY_TOKEN": "env-token"],
             launchdSnapshot: snapshot)
         #expect(envToken == "env-token")
 
@@ -39,7 +39,7 @@ import Testing
     @Test func resolveGatewayTokenIgnoresLaunchdInRemoteMode() {
         let snapshot = LaunchAgentPlistSnapshot(
             programArguments: [],
-            environment: ["OPENCLAW_GATEWAY_TOKEN": "launchd-token"],
+            environment: ["CLAWDBOT_GATEWAY_TOKEN": "launchd-token"],
             stdoutPath: nil,
             stderrPath: nil,
             port: nil,
@@ -58,7 +58,7 @@ import Testing
     @Test func resolveGatewayPasswordFallsBackToLaunchd() {
         let snapshot = LaunchAgentPlistSnapshot(
             programArguments: [],
-            environment: ["OPENCLAW_GATEWAY_PASSWORD": "launchd-pass"],
+            environment: ["CLAWDBOT_GATEWAY_PASSWORD": "launchd-pass"],
             stdoutPath: nil,
             stderrPath: nil,
             port: nil,
@@ -176,61 +176,9 @@ import Testing
         #expect(host == "192.168.1.10")
     }
 
-    @Test func dashboardURLUsesLocalBasePathInLocalMode() throws {
-        let config: GatewayConnection.Config = (
-            url: try #require(URL(string: "ws://127.0.0.1:18789")),
-            token: nil,
-            password: nil
-        )
-
-        let url = try GatewayEndpointStore.dashboardURL(
-            for: config,
-            mode: .local,
-            localBasePath: " control ")
-        #expect(url.absoluteString == "http://127.0.0.1:18789/control/")
-    }
-
-    @Test func dashboardURLSkipsLocalBasePathInRemoteMode() throws {
-        let config: GatewayConnection.Config = (
-            url: try #require(URL(string: "ws://gateway.example:18789")),
-            token: nil,
-            password: nil
-        )
-
-        let url = try GatewayEndpointStore.dashboardURL(
-            for: config,
-            mode: .remote,
-            localBasePath: "/local-ui")
-        #expect(url.absoluteString == "http://gateway.example:18789/")
-    }
-
-    @Test func dashboardURLPrefersPathFromConfigURL() throws {
-        let config: GatewayConnection.Config = (
-            url: try #require(URL(string: "wss://gateway.example:443/remote-ui")),
-            token: nil,
-            password: nil
-        )
-
-        let url = try GatewayEndpointStore.dashboardURL(
-            for: config,
-            mode: .remote,
-            localBasePath: "/local-ui")
-        #expect(url.absoluteString == "https://gateway.example:443/remote-ui/")
-    }
-
-    @Test func normalizeGatewayUrlAddsDefaultPortForLoopbackWs() {
-        let url = GatewayRemoteConfig.normalizeGatewayUrl("ws://127.0.0.1")
+    @Test func normalizeGatewayUrlAddsDefaultPortForWs() {
+        let url = GatewayRemoteConfig.normalizeGatewayUrl("ws://gateway")
         #expect(url?.port == 18789)
-        #expect(url?.absoluteString == "ws://127.0.0.1:18789")
-    }
-
-    @Test func normalizeGatewayUrlRejectsNonLoopbackWs() {
-        let url = GatewayRemoteConfig.normalizeGatewayUrl("ws://gateway.example:18789")
-        #expect(url == nil)
-    }
-
-    @Test func normalizeGatewayUrlRejectsPrefixBypassLoopbackHost() {
-        let url = GatewayRemoteConfig.normalizeGatewayUrl("ws://127.attacker.example")
-        #expect(url == nil)
+        #expect(url?.absoluteString == "ws://gateway:18789")
     }
 }

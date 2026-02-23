@@ -41,13 +41,13 @@ final class AppState {
     }
 
     var onboardingSeen: Bool {
-        didSet { self.ifNotPreview { UserDefaults.standard.set(self.onboardingSeen, forKey: onboardingSeenKey) }
+        didSet { self.ifNotPreview { UserDefaults.standard.set(self.onboardingSeen, forKey: "clawdbot.onboardingSeen") }
         }
     }
 
     var debugPaneEnabled: Bool {
         didSet {
-            self.ifNotPreview { UserDefaults.standard.set(self.debugPaneEnabled, forKey: debugPaneEnabledKey) }
+            self.ifNotPreview { UserDefaults.standard.set(self.debugPaneEnabled, forKey: "clawdbot.debugPaneEnabled") }
             CanvasManager.shared.refreshDebugStatus()
         }
     }
@@ -228,16 +228,12 @@ final class AppState {
     private var earBoostTask: Task<Void, Never>?
 
     init(preview: Bool = false) {
-        let isPreview = preview || ProcessInfo.processInfo.isRunningTests
-        self.isPreview = isPreview
-        if !isPreview {
-            migrateLegacyDefaults()
-        }
-        let onboardingSeen = UserDefaults.standard.bool(forKey: onboardingSeenKey)
+        self.isPreview = preview || ProcessInfo.processInfo.isRunningTests
+        let onboardingSeen = UserDefaults.standard.bool(forKey: "clawdbot.onboardingSeen")
         self.isPaused = UserDefaults.standard.bool(forKey: pauseDefaultsKey)
         self.launchAtLogin = false
         self.onboardingSeen = onboardingSeen
-        self.debugPaneEnabled = UserDefaults.standard.bool(forKey: debugPaneEnabledKey)
+        self.debugPaneEnabled = UserDefaults.standard.bool(forKey: "clawdbot.debugPaneEnabled")
         let savedVoiceWake = UserDefaults.standard.bool(forKey: swabbleEnabledKey)
         self.swabbleEnabled = voiceWakeSupported ? savedVoiceWake : false
         self.swabbleTriggerWords = UserDefaults.standard
@@ -279,7 +275,7 @@ final class AppState {
             UserDefaults.standard.set(IconOverrideSelection.system.rawValue, forKey: iconOverrideKey)
         }
 
-        let configRoot = OpenClawConfigFile.loadDict()
+        let configRoot = ClawdbotConfigFile.loadDict()
         let configRemoteUrl = GatewayRemoteConfig.resolveUrlString(root: configRoot)
         let configRemoteTransport = GatewayRemoteConfig.resolveTransport(root: configRoot)
         let resolvedConnectionMode = ConnectionModeResolver.resolve(root: configRoot).mode
@@ -357,7 +353,7 @@ final class AppState {
     }
 
     private func startConfigWatcher() {
-        let configUrl = OpenClawConfigFile.url()
+        let configUrl = ClawdbotConfigFile.url()
         self.configWatcher = ConfigFileWatcher(url: configUrl) { [weak self] in
             Task { @MainActor in
                 self?.applyConfigFromDisk()
@@ -367,7 +363,7 @@ final class AppState {
     }
 
     private func applyConfigFromDisk() {
-        let root = OpenClawConfigFile.loadDict()
+        let root = ClawdbotConfigFile.loadDict()
         self.applyConfigOverrides(root)
     }
 
@@ -417,16 +413,10 @@ final class AppState {
     }
 
     private func updateRemoteTarget(host: String) {
-        let trimmed = self.remoteTarget.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let parsed = CommandResolver.parseSSHTarget(trimmed) else { return }
-        let trimmedUser = parsed.user?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let user = (trimmedUser?.isEmpty ?? true) ? nil : trimmedUser
-        let port = parsed.port
-        let assembled: String = if let user {
-            port == 22 ? "\(user)@\(host)" : "\(user)@\(host):\(port)"
-        } else {
-            port == 22 ? host : "\(host):\(port)"
-        }
+        let parsed = CommandResolver.parseSSHTarget(self.remoteTarget)
+        let user = parsed?.user ?? NSUserName()
+        let port = parsed?.port ?? 22
+        let assembled = port == 22 ? "\(user)@\(host)" : "\(user)@\(host):\(port)"
         if assembled != self.remoteTarget {
             self.remoteTarget = assembled
         }
@@ -454,7 +444,7 @@ final class AppState {
 
         Task { @MainActor in
             // Keep app-only connection settings local to avoid overwriting remote gateway config.
-            var root = OpenClawConfigFile.loadDict()
+            var root = ClawdbotConfigFile.loadDict()
             var gateway = root["gateway"] as? [String: Any] ?? [:]
             var changed = false
 
@@ -480,7 +470,8 @@ final class AppState {
                             remote.removeValue(forKey: "url")
                             remoteChanged = true
                         }
-                    } else if let normalizedUrl = GatewayRemoteConfig.normalizeGatewayUrlString(trimmedUrl) {
+                    } else {
+                        let normalizedUrl = GatewayRemoteConfig.normalizeGatewayUrlString(trimmedUrl) ?? trimmedUrl
                         if (remote["url"] as? String) != normalizedUrl {
                             remote["url"] = normalizedUrl
                             remoteChanged = true
@@ -543,7 +534,7 @@ final class AppState {
             } else {
                 root["gateway"] = gateway
             }
-            OpenClawConfigFile.saveDict(root)
+            ClawdbotConfigFile.saveDict(root)
         }
     }
 
@@ -687,7 +678,7 @@ extension AppState {
         state.remoteTarget = "user@example.com"
         state.remoteUrl = "wss://gateway.example.ts.net"
         state.remoteIdentity = "~/.ssh/id_ed25519"
-        state.remoteProjectRoot = "~/Projects/openclaw"
+        state.remoteProjectRoot = "~/Projects/clawdbot"
         state.remoteCliPath = ""
         return state
     }
@@ -696,9 +687,7 @@ extension AppState {
 @MainActor
 enum AppStateStore {
     static let shared = AppState()
-    static var isPausedFlag: Bool {
-        UserDefaults.standard.bool(forKey: pauseDefaultsKey)
-    }
+    static var isPausedFlag: Bool { UserDefaults.standard.bool(forKey: pauseDefaultsKey) }
 
     static func updateLaunchAtLogin(enabled: Bool) {
         Task.detached(priority: .utility) {
