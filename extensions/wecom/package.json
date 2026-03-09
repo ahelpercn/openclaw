@@ -1,0 +1,32 @@
+{
+  "name": "@openclaw/wecom",
+  "version": "2026.3.7",
+  "description": "OpenClaw WeCom (Enterprise WeChat) channel plugin",
+  "type": "module",
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "channel": {
+      "id": "wecom",
+      "label": "WeCom",
+      "selectionLabel": "WeCom (企业微信)",
+      "docsPath": "/channels/wecom",
+      "docsLabel": "wecom",
+      "blurb": "企业微信 (Enterprise WeChat) via official API.",
+      "aliases": [
+        "wxwork"
+      ],
+      "order": 36,
+      "quickstartAllowFrom": true
+    },
+    "install": {
+      "npmSpec": "@openclaw/wecom",
+      "localPath": "extensions/wecom",
+      "defaultChoice": "npm"
+    }
+  }
+}
