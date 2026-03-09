@@ -1,0 +1,30 @@
+{
+  "name": "@openclaw/wechat",
+  "version": "2026.3.7",
+  "description": "OpenClaw WeChat channel plugin via Wechaty",
+  "type": "module",
+  "dependencies": {
+    "wechaty": "^1.20.2",
+    "zod": "^4.3.6"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "channel": {
+      "id": "wechat",
+      "label": "WeChat",
+      "selectionLabel": "WeChat (Wechaty)",
+      "docsPath": "/channels/wechat",
+      "docsLabel": "wechat",
+      "blurb": "WeChat personal accounts via Wechaty puppet.",
+      "order": 37,
+      "quickstartAllowFrom": true
+    },
+    "install": {
+      "npmSpec": "@openclaw/wechat",
+      "localPath": "extensions/wechat",
+      "defaultChoice": "npm"
+    }
+  }
+}
