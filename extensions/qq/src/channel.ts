@@ -255,7 +255,16 @@ export const qqPlugin: ChannelPlugin<ResolvedQqAccount, QqProbe> = {
         abortSignal: ctx.abortSignal,
         statusSink: (patch) => ctx.setStatus({ accountId: ctx.accountId, ...patch }),
       });
-      return { stop };
+
+      // Block until abort signal fires — the gateway auto-restarts if this promise resolves
+      await new Promise<void>((resolve) => {
+        if (ctx.abortSignal?.aborted) {
+          resolve();
+          return;
+        }
+        ctx.abortSignal?.addEventListener("abort", () => resolve(), { once: true });
+      });
+      stop();
     },
   },
 };
