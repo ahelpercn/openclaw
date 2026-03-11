@@ -21,5 +21,10 @@
   },
   "peerDependencies": {
     "openclaw": "workspace:*"
+  },
+  "openclaw": {
+    "extensions": [
+      "./dist/index.js"
+    ]
   }
 }
