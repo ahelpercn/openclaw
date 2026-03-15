@@ -206,5 +206,85 @@
   {
     "source": "env var",
     "target": "环境变量"
+  },
+  {
+    "source": "Threat Model",
+    "target": "威胁模型"
+  },
+  {
+    "source": "threat model",
+    "target": "威胁模型"
+  },
+  {
+    "source": "MITRE ATLAS",
+    "target": "MITRE ATLAS"
+  },
+  {
+    "source": "Trusted Proxy",
+    "target": "受信代理"
+  },
+  {
+    "source": "trusted proxy",
+    "target": "受信代理"
+  },
+  {
+    "source": "Configuration Reference",
+    "target": "配置参考"
+  },
+  {
+    "source": "Loop Detection",
+    "target": "循环检测"
+  },
+  {
+    "source": "loop detection",
+    "target": "循环检测"
+  },
+  {
+    "source": "Process Supervision",
+    "target": "进程监管"
+  },
+  {
+    "source": "Channel Agnostic",
+    "target": "渠道无关"
+  },
+  {
+    "source": "Rootless Container",
+    "target": "无特权容器"
+  },
+  {
+    "source": "rootless container",
+    "target": "无特权容器"
+  },
+  {
+    "source": "OIDC",
+    "target": "OIDC"
+  },
+  {
+    "source": "OAuth2",
+    "target": "OAuth2"
+  },
+  {
+    "source": "TTS",
+    "target": "TTS 语音合成"
+  },
+  {
+    "source": "STT",
+    "target": "STT 语音识别"
+  },
+  {
+    "source": "voice call",
+    "target": "语音通话"
+  },
+  {
+    "source": "Voice Call",
+    "target": "语音通话"
+  },
+  {
+    "source": "wake word",
+    "target": "唤醒词"
+  },
+  {
+    "source": "Wake Word",
+    "target": "唤醒词"
   }
 ]
